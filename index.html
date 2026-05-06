@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SRR7 NCD Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="srr7-data.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="เมนูหลัก">
+        <div class="brand">
+          <span class="brand-mark">N</span>
+          <div>
+            <strong>SRR7</strong>
+            <small>NCD Screening</small>
+          </div>
+        </div>
+        <nav class="side-nav">
+          <a href="#overview" class="active">ภาพรวม</a>
+          <a href="#import">นำเข้าไฟล์</a>
+          <a href="#charts">กราฟวิเคราะห์</a>
+          <a href="#summary">สรุปรายหมู่บ้าน</a>
+          <a href="#registry">ทะเบียนรายชื่อ</a>
+        </nav>
+        <div class="side-note">
+          <span>ข้อมูลล่าสุด</span>
+          <strong id="populationTotal">0</strong>
+          <small>ประชากรเป้าหมาย ≥35 ปี</small>
+        </div>
+      </aside>
+
+      <div class="content">
+        <header class="hero" id="overview">
+          <div>
+            <p class="eyebrow">SRR7 NCD Operations</p>
+            <h1>Dashboard คัดกรอง NCDs ประชากร ≥35 ปี ตำบลคำใหญ่ ปี 2567-2569</h1>
+            <p id="sourceInfo" class="source"></p>
+          </div>
+          <div class="hero-metric">
+            <span id="totalRecords">0</span>
+            <small>รายการคัดกรอง</small>
+          </div>
+        </header>
+
+        <section class="toolbar" aria-label="ตัวกรองข้อมูล">
+          <div class="filter-group">
+            <label for="rangeMode">ช่วงเวลา</label>
+            <select id="rangeMode">
+              <option value="today">วันนี้</option>
+              <option value="week">สัปดาห์นี้</option>
+              <option value="month">เดือนนี้</option>
+              <option value="fiscal" selected>ปีงบประมาณ</option>
+              <option value="custom">กำหนดเอง</option>
+              <option value="all">ทั้งหมด</option>
+            </select>
+          </div>
+          <div class="filter-group custom-date">
+            <label for="startDate">เริ่ม</label>
+            <input id="startDate" type="date" />
+          </div>
+          <div class="filter-group custom-date">
+            <label for="endDate">ถึง</label>
+            <input id="endDate" type="date" />
+          </div>
+          <div class="filter-group">
+            <label for="villageFilter">หมู่บ้าน</label>
+            <select id="villageFilter">
+              <option value="all">หมู่ 1-12</option>
+            </select>
+          </div>
+          <div class="range-badge">
+            <span>ช่วงข้อมูล</span>
+            <strong id="activeRange">-</strong>
+          </div>
+        </section>
+
+        <section class="import-panel" id="import" aria-label="นำเข้าไฟล์คัดกรอง">
+          <div>
+            <p class="eyebrow">SRR7 Import</p>
+            <h2>นำเข้าไฟล์คัดกรองจาก SRR7</h2>
+            <p>เลือกไฟล์ Excel คัดกรองล่าสุด ระบบจะอัปเดต KPI, กราฟ และทะเบียนรายชื่อจากไฟล์ที่นำเข้า</p>
+          </div>
+          <div class="import-control">
+            <label for="screeningImport">ไฟล์คัดกรอง (.xlsx)</label>
+            <input id="screeningImport" type="file" accept=".xlsx,.xls" />
+            <span id="importStatus">ยังไม่ได้นำเข้าไฟล์ใหม่</span>
+          </div>
+        </section>
+
+        <section class="kpi-grid" aria-label="ตัวชี้วัดหลัก">
+          <article class="kpi kpi-primary"><span>คัดกรองแล้ว</span><strong id="kpiScreened">0</strong></article>
+          <article class="kpi"><span>ยังไม่คัดกรอง</span><strong id="kpiUnscreened">0</strong></article>
+          <article class="kpi"><span>ปกติ</span><strong id="kpiNormal">0</strong></article>
+          <article class="kpi kpi-warning"><span>เสี่ยง</span><strong id="kpiRisk">0</strong></article>
+          <article class="kpi"><span>DM</span><strong id="kpiDm">0</strong></article>
+          <article class="kpi"><span>HT</span><strong id="kpiHt">0</strong></article>
+          <article class="kpi"><span>DM+HT</span><strong id="kpiBoth">0</strong></article>
+          <article class="kpi kpi-good"><span>ควบคุมได้</span><strong id="kpiControlled">0</strong></article>
+          <article class="kpi kpi-danger"><span>ควบคุมไม่ได้</span><strong id="kpiUncontrolled">0</strong></article>
+        </section>
+
+        <section class="leaderboard" aria-label="อันดับหมู่บ้านคัดกรองสูงสุด">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Top Screening Villages</p>
+              <h2>หมู่บ้านที่มีร้อยละการคัดกรองสูงสุด 3 อันดับแรก</h2>
+            </div>
+          </div>
+          <div id="topVillages" class="leaderboard-grid"></div>
+        </section>
+
+        <section class="leaderboard vhv-leaderboard" aria-label="อันดับ อสม. คัดกรองสูงสุด">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Top Screening Village Health Volunteers (VHVs)</p>
+              <h2>อสม.ที่มีผลงานการคัดกรองสูงสุด 10 อันดับแรก</h2>
+            </div>
+          </div>
+          <div class="table-wrap compact-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>อันดับ</th>
+                  <th>อสม. / ผู้บันทึก</th>
+                  <th>หมู่ที่บันทึก</th>
+                  <th>จำนวนคัดกรอง</th>
+                  <th>รางวัล</th>
+                </tr>
+              </thead>
+              <tbody id="topVhvs"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="chart-grid" id="charts" aria-label="กราฟสรุป">
+          <article class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>จำนวนผู้รับการคัดกรองหมู่บ้าน</h2>
+                <span>DM / HT / DM+HT</span>
+              </div>
+            </div>
+            <canvas id="patientsBar"></canvas>
+          </article>
+          <article class="chart-panel compact">
+            <div class="panel-heading">
+              <div>
+                <h2>กลุ่มเสี่ยง NCDs</h2>
+                <span>ปกติ / เสี่ยง / ผู้ป่วยเดิม</span>
+              </div>
+            </div>
+            <canvas id="riskDoughnut"></canvas>
+          </article>
+          <article class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>แนวโน้มการคัดกรองรายเดือน</h2>
+                <span>นับจากวันที่คัดกรองล่าสุด</span>
+              </div>
+            </div>
+            <canvas id="monthlyLine"></canvas>
+          </article>
+          <article class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>DM/HT แยกหมู่บ้าน</h2>
+                <span>Stacked bar</span>
+              </div>
+            </div>
+            <canvas id="stackedVillage"></canvas>
+          </article>
+        </section>
+
+        <section class="data-section" id="summary">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Village Summary</p>
+              <h2>สรุปรายหมู่บ้าน</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>หมู่</th>
+                  <th>เป้าหมาย ≥35 ปี</th>
+                  <th>คัดกรองแล้ว</th>
+                  <th>ยังไม่คัดกรอง</th>
+                  <th>ปกติ</th>
+                  <th>เสี่ยง</th>
+                  <th>DM</th>
+                  <th>HT</th>
+                  <th>DM+HT</th>
+                  <th>ควบคุมได้</th>
+                  <th>ควบคุมไม่ได้</th>
+                </tr>
+              </thead>
+              <tbody id="villageRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="data-section registry-section" id="registry">
+          <div class="section-heading registry-heading">
+            <div>
+              <p class="eyebrow">Patient Registry</p>
+              <h2>ทะเบียนรายชื่อแยกรายหมู่บ้าน</h2>
+              <p id="registrySubtitle">เลือกเมนูเพื่อดูรายชื่อ</p>
+            </div>
+            <div class="registry-actions locked">
+              <strong id="registryCount" class="registry-count">0 ราย</strong>
+              <button id="logoutRegistry" class="ghost-button" type="button">ออกจากระบบ</button>
+            </div>
+          </div>
+
+          <div id="registryLogin" class="login-panel">
+            <div>
+              <h3>เข้าสู่ระบบเพื่อดูทะเบียนรายชื่อ</h3>
+              <p>ข้อมูลส่วนนี้มีรายชื่อประชาชน จึงต้องยืนยันตัวตนก่อนเข้าดูทะเบียน</p>
+            </div>
+            <form id="registryLoginForm" class="login-form">
+              <label for="registryUsername">ชื่อผู้ใช้</label>
+              <input id="registryUsername" type="text" autocomplete="username" placeholder="username" />
+              <label for="registryPassword">รหัสผ่าน</label>
+              <input id="registryPassword" type="password" autocomplete="current-password" placeholder="password" />
+              <button type="submit">เข้าสู่ระบบ</button>
+              <span id="loginMessage" class="login-message" role="status"></span>
+            </form>
+          </div>
+
+          <div id="registryContent" class="registry-content locked">
+            <div class="registry-filters" aria-label="ตัวกรองทะเบียนรายชื่อ">
+              <div class="filter-group">
+                <label for="registryAddressFilter">ค้นตามที่อยู่ / บ้านเลขที่</label>
+                <input id="registryAddressFilter" type="search" placeholder="เช่น 52 หรือ หมู่ 5" />
+              </div>
+              <div class="filter-group">
+                <label for="registryVolunteerFilter">กรองตาม อสม. / ผู้บันทึก</label>
+                <select id="registryVolunteerFilter">
+                  <option value="all">ทุกคน</option>
+                </select>
+              </div>
+              <button id="clearRegistryFilters" class="ghost-button" type="button">ล้างตัวกรอง</button>
+            </div>
+            <div class="registry-tabs" role="tablist" aria-label="เมนูทะเบียนรายชื่อ">
+              <button class="registry-tab active" type="button" data-registry="htRisk">เสี่ยงความดันโลหิตสูง</button>
+              <button class="registry-tab" type="button" data-registry="dmRisk">เสี่ยงเบาหวาน</button>
+              <button class="registry-tab" type="button" data-registry="unscreened">ยังไม่ได้รับการคัดกรอง</button>
+            </div>
+            <div class="table-wrap registry-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ลำดับ</th>
+                    <th>ชื่อ - สกุล</th>
+                    <th>เพศ</th>
+                    <th>บ้านเลขที่</th>
+                    <th>หมู่</th>
+                    <th>อสม. / ผู้บันทึก</th>
+                    <th>SBP/DBP</th>
+                  <th>DTX</th>
+                  <th>วันที่คัดกรอง</th>
+                  <th>หมายเหตุ</th>
+                  <th>ข้อมูลรายบุคคล</th>
+                </tr>
+              </thead>
+              <tbody id="registryRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <dialog id="personDialog" class="person-dialog">
+      <form method="dialog" class="person-dialog-shell">
+        <div class="person-dialog-head">
+          <div>
+            <p class="eyebrow">Individual Health Record</p>
+            <h2 id="personDialogTitle">ข้อมูลรายบุคคล</h2>
+            <p id="personDialogMeta"></p>
+          </div>
+          <button value="cancel" class="dialog-close" type="submit" aria-label="ปิด">×</button>
+        </div>
+
+        <section class="person-metrics" aria-label="ข้อมูลสุขภาพล่าสุด">
+          <article><span>ความดันโลหิต</span><strong id="personBp">-</strong><small id="personBpStatus">-</small></article>
+          <article><span>น้ำตาลในเลือด</span><strong id="personDtx">-</strong><small id="personDtxStatus">-</small></article>
+          <article><span>BMI</span><strong id="personBmi">-</strong><small id="personBmiStatus">-</small></article>
+          <article><span>CVD Risk</span><strong id="personCvd">-</strong><small>รอข้อมูลประเมินเพิ่มเติม</small></article>
+        </section>
+
+        <section class="measure-form-section">
+          <div>
+            <h3>บันทึกน้ำหนัก / ส่วนสูง</h3>
+            <p>บันทึกโดย admin เพื่อดูข้อมูลรายบุคคลและติดตาม BMI ย้อนหลัง</p>
+          </div>
+          <div class="measure-form">
+            <label for="measureDate">วันที่</label>
+            <input id="measureDate" type="date" />
+            <label for="measureWeight">น้ำหนัก (กก.)</label>
+            <input id="measureWeight" type="number" min="1" step="0.1" placeholder="เช่น 62.5" />
+            <label for="measureHeight">ส่วนสูง (ซม.)</label>
+            <input id="measureHeight" type="number" min="1" step="0.1" placeholder="เช่น 160" />
+            <button id="saveMeasure" type="button">บันทึก</button>
+          </div>
+          <span id="measureMessage" class="login-message"></span>
+        </section>
+
+        <section class="person-chart-grid">
+          <article class="mini-chart"><h3>แนวโน้มความดัน</h3><canvas id="personBpChart"></canvas></article>
+          <article class="mini-chart"><h3>แนวโน้มน้ำตาล / BMI</h3><canvas id="personMetabolicChart"></canvas></article>
+        </section>
+
+        <section>
+          <h3>ประวัติการคัดกรองและบันทึกสุขภาพ</h3>
+          <div class="table-wrap person-history-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>น้ำหนัก</th>
+                  <th>ส่วนสูง</th>
+                  <th>BMI</th>
+                  <th>ความดัน</th>
+                  <th>DTX</th>
+                  <th>สูบบุหรี่</th>
+                  <th>ดื่มสุรา</th>
+                </tr>
+              </thead>
+              <tbody id="personHistoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
